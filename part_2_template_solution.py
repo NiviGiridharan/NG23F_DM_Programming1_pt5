@@ -125,6 +125,90 @@ class Section2:
         # Enter your code and fill the `answer`` dictionary
         answer = {}
 
+        # Loop over different combinations of training and testing sizes
+        for i in range(0, len(ntrain_list)):
+            train_rows = ntrain_list[i]
+            test_rows = ntest_list[i]
+    
+            # Subset the data based on the specified sizes
+            Xtrain = X[0:train_rows,:]
+            ytrain = y[0:train_rows]
+            Xtest_subset = Xtest[0:test_rows]
+            ytest_subset = ytest[0:test_rows]
+            
+            # Update X and y for further processing
+            X = Xtrain
+            y = ytrain
+      
+            # Initialize dictionaries to store results for each part
+            answer1= {}
+            
+            # Part 1C: Decision Tree with K-Fold Cross-Validation
+            clf = DecisionTreeClassifier(random_state=self.seed)
+            cv = KFold(n_splits=5,shuffle = True,random_state=self.seed)
+            dec_tree = u.train_simple_classifier_with_cv(Xtrain=X,ytrain=y,clf=clf,cv=cv) 
+    
+            answer_sub ={}
+            res_key ={}
+            res_key['mean_fit_time'] = dec_tree['fit_time'].mean()
+            res_key['std_fit_time'] = dec_tree['fit_time'].std()
+            res_key['mean_accuracy'] = dec_tree['test_score'].mean()
+            res_key['std_accuracy'] = dec_tree['test_score'].std()
+        
+            answer_sub["scores_C"] = res_key
+            answer_sub["clf"] = clf  
+            answer_sub["cv"] = cv 
+    
+            # Part 1D: Decision Tree with Shuffle-Split Cross-Validation
+            answer_sub1 ={}
+            clf = DecisionTreeClassifier(random_state=self.seed)
+            cv_ss = ShuffleSplit(n_splits=5,random_state=self.seed)
+    
+            dec_tree_ss = u.train_simple_classifier_with_cv(Xtrain=X,ytrain=y,clf=clf,cv=cv_ss)
+            res_key_ss ={}
+            res_key_ss['mean_fit_time'] = dec_tree_ss['fit_time'].mean()
+            res_key_ss['std_fit_time'] = dec_tree_ss['fit_time'].std()
+            res_key_ss['mean_accuracy'] = dec_tree_ss['test_score'].mean()
+            res_key_ss['std_accuracy'] = dec_tree_ss['test_score'].std()
+    
+            answer_sub1["scores_D"] = res_key_ss
+            answer_sub1["clf"] = clf
+            answer_sub1["cv"] = cv_ss
+    
+            # Part 1F: Logistic Regression with Shuffle-Split Cross-Validation
+            answer_sub2 ={}
+            clf = LogisticRegression(max_iter=300,random_state=self.seed)
+            cv_ss = ShuffleSplit(n_splits=5,random_state=self.seed)
+            scores = cross_validate(clf, X, y, cv=cv_ss, return_train_score=True)
+            clf.fit(X, y)
+            scores_train_F = clf.score(X, y)
+            scores_test_F = clf.score(Xtest_subset, ytest_subset) 
+            train_pred =clf.predict(X)
+            test_pred = clf.predict(Xtest_subset)
+            conf_mat_train = confusion_matrix(y,train_pred)
+            conf_mat_test = confusion_matrix(ytest_subset,test_pred)
+            mean_cv_accuracy_F = scores["test_score"].mean()
+            answer_sub2 = {
+                "scores_train_F": scores_train_F,
+                "scores_test_F": scores_test_F,
+                "mean_cv_accuracy_F": mean_cv_accuracy_F,
+                "clf": clf,
+                "cv": cv_ss,
+                "conf_mat_train": conf_mat_train,
+                "conf_mat_test": conf_mat_test
+            }
+            
+            # Store results for the current training size
+            answer[ntrain_list[i]] = {
+                "partC": answer_sub ,
+                "partD": answer_sub1,
+                "partF": answer_sub2,
+                "ntrain": train_rows,
+                "ntest": test_rows,
+                "class_count_train": list(np.bincount(ytrain)) ,
+                "class_count_test": list(np.bincount(ytest_subset))
+            }
+
         """
         `answer` is a dictionary with the following keys:
            - 1000, 5000, 10000: each key is the number of training samples
@@ -140,121 +224,5 @@ class Section2:
             - "class_count_test": number of elements in each class in
                                the training set (a list, not a numpy array)
         """
-        # Define the sizes of training and testing data
-        train_sizes = [1000, 5000, 10000]
-        test_sizes = [200, 1000, 2000]
-        # Initialize a dictionary to store results
-        answers = {}
         
-        # Loop over different training sizes
-        for ntrain in train_sizes:
-            answers[ntrain] = {}
-            for ntest in test_sizes:
-                    Xtrain, ytrain = X[:ntrain], y[:ntrain]
-                    Xtest, ytest = X[ntrain:ntrain+ntest], y[ntrain:ntrain+ntest]
-
-
-                    #Logistic Regression
-                    cv = ShuffleSplit(n_splits=5, test_size=0.2, random_state=self.seed)
-                    answer_lr = {}
-                    clf_lr = LogisticRegression(max_iter=300, multi_class='ovr', random_state=self.seed)
-                    logistic_regression_results = u.train_simple_classifier_with_cv(Xtrain=Xtrain, ytrain=ytrain, clf=clf_lr, cv=cv)
-                    lr_scores = {}
-
-                    mean_accuracy = logistic_regression_results['test_score'].mean()
-                    std_accuracy = logistic_regression_results['test_score'].std()
-                    mean_fit_time = logistic_regression_results['fit_time'].mean()
-                    std_fit_time = logistic_regression_results['fit_time'].std()
-
-                    lr_scores['mean_fit_time'] = mean_fit_time
-                    lr_scores['std_fit_time'] = std_fit_time
-                    lr_scores['mean_accuracy'] = mean_accuracy
-                    lr_scores['std_accuracy'] = std_accuracy
-                    answer_lr['clf'] = clf_lr
-                    answer_lr['cv'] = cv
-                    answer_lr['scores'] = lr_scores
-
-                    #Decision Tree with K-Fold Cross-Validation
-                    clf_c = DecisionTreeClassifier(random_state=self.seed)
-                    cv_c = KFold(n_splits=5, shuffle=True, random_state=self.seed)
-                    cv_results = u.train_simple_classifier_with_cv(Xtrain=Xtrain, ytrain=ytrain, clf=clf_c, cv=cv_c)
-                    answer_dt_c = {}
-                    answer_dt_c['clf'] = clf_c
-                    answer_dt_c['cv'] = cv_c
-                    scores_dt_c = {}
-
-
-                    mean_accuracy = cv_results['test_score'].mean()
-                    std_accuracy = cv_results['test_score'].std()
-
-                    mean_fit_time = cv_results['fit_time'].mean()
-                    std_fit_time = cv_results['fit_time'].std()
-
-                    scores_dt_c['mean_fit_time'] = mean_fit_time
-                    scores_dt_c['std_fit_time'] = std_fit_time
-                    scores_dt_c['mean_accuracy'] = mean_accuracy
-                    scores_dt_c['std_accuracy'] = std_accuracy
-
-                    answer_dt_c['scores'] = scores_dt_c
-
-                    #Decision Tree with Shuffle-Split Cross-Validation
-                    clf_d = DecisionTreeClassifier(random_state=self.seed)
-                    cv_d = ShuffleSplit(n_splits=5, test_size=0.2, random_state=self.seed)
-                    cv_results_d = u.train_simple_classifier_with_cv(Xtrain=Xtrain, ytrain=ytrain, clf=clf_d, cv=cv_d)
-
-                    answer_dt_d = {}
-
-                    answer_dt_d['clf'] = clf_d
-                    answer_dt_d['cv'] = cv_d
-
-                    scores_d = {}
-
-
-
-                    mean_accuracy = cv_results_d['test_score'].mean()
-                    std_accuracy = cv_results_d['test_score'].std()
-
-                    mean_fit_time = cv_results_d['fit_time'].mean()
-                    std_fit_time = cv_results_d['fit_time'].std()
-
-                    scores_d['mean_fit_time'] = mean_fit_time
-                    scores_d['std_fit_time'] = std_fit_time
-                    scores_d['mean_accuracy'] = mean_accuracy
-                    scores_d['std_accuracy'] = std_accuracy
-
-                    answer_dt_d['scores'] = scores_d
-                    answer_dt_d['explain_kfold_vs_shuffle_split'] = """
-                        K-Fold Cross-Validation divides the dataset into k consecutive folds, utilizing each fold once as a test set and the remaining k-1 folds for training. This method guarantees that every data point has an opportunity to be in both training and testing sets, making it ideal for smaller datasets where maximizing training data is crucial.
-Shuffle-Split Cross-Validation, on the other hand, creates a specified number of independent train/test splits by shuffling the samples before partitioning them. This approach offers greater flexibility in controlling the number of splits and the size of test sets, making it preferable for larger datasets or when randomness in sample selection is desired.
-
-Advantages of Shuffle-Split:
-
-Provides more control over test set size and resampling iterations.
-Suited for large datasets due to its randomized nature, leading to improved efficiency.
-Disadvantages of Shuffle-Split:
-
-Results in less systematic coverage of data compared to K-Fold.
-May exhibit higher variance in test performance across iterations due to random sampling.
-Empirical Benefits:
-
-Reduced computational time.
-Potentially higher accuracy.
-                    """
-
-
-                    unique, counts_train = np.unique(ytrain, return_counts=True)
-                    class_count_train = dict(zip(unique, counts_train))
-
-                    unique, counts_test = np.unique(ytest, return_counts=True)
-                    class_count_test = dict(zip(unique, counts_test))
-
-                    answers[ntrain][ntest] = {
-                        "partC": answer_dt_c,
-                        "partD": answer_dt_d,
-                        "partF": answer_lr,
-                        "ntrain": ntrain,
-                        "ntest": ntest,
-                        "class_count_train": class_count_train,
-                        "class_count_test": class_count_test,
-                    }
             return answers
