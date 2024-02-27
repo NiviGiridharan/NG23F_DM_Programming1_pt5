@@ -69,22 +69,13 @@ class Section2:
         NDArray[np.floating],
         NDArray[np.int32],
     ]:
-        
+        # Prepare data for training and testing. Scale the features
         Xtrain, ytrain, Xtest, ytest = u.prepare_data()
         Xtrain = nu.scale_data(Xtrain)
         Xtest = nu.scale_data(Xtest)
         answer = {}
         
-        answer['nb_classes_train'] = len(np.unique(ytrain))
-        answer['nb_classes_test'] = len(np.unique(ytest))
-        answer['class_count_train'] = np.bincount(ytrain)
-        answer['class_count_test'] = np.bincount(ytest)
-        answer['length_Xtrain'] = len(Xtrain)
-        answer['length_Xtest'] = len(Xtest)
-        answer['length_ytrain'] = len(ytrain)
-        answer['length_ytest'] = len(ytest)
-        answer['max_Xtrain'] = Xtrain.max()
-        answer['max_Xtest'] = Xtrain.max()
+        
         # Enter your code and fill the `answer`` dictionary
 
         # `answer` is a dictionary with the following keys:
@@ -105,6 +96,18 @@ class Section2:
         #Xtrain = Xtest = np.zeros([1, 1], dtype="float")
         #ytrain = ytest = np.zeros([1], dtype="int")
 
+        # Compute and store various statistics
+        answer['nb_classes_train'] = len(np.unique(ytrain))
+        answer['nb_classes_test'] = len(np.unique(ytest))
+        answer['class_count_train'] = np.bincount(ytrain)
+        answer['class_count_test'] = np.bincount(ytest)
+        answer['length_Xtrain'] = len(Xtrain)
+        answer['length_Xtest'] = len(Xtest)
+        answer['length_ytrain'] = len(ytrain)
+        answer['length_ytest'] = len(ytest)
+        answer['max_Xtrain'] = Xtrain.max()
+        answer['max_Xtest'] = Xtrain.max()
+        
         return answer, Xtrain, ytrain, Xtest, ytest
 
     """
@@ -135,10 +138,13 @@ class Section2:
         """ """
         # Enter your code and fill the `answer`` dictionary
         answer = {}
+        # Loop over different combinations of training and testing sizes
         for i in range(0, len(ntrain_list)):
+            # Extract the current training and testing sizes
             train_rows = ntrain_list[i]
             test_rows = ntest_list[i]
-    
+
+            # Subset the data based on the specified sizes
             Xtrain = X[0:train_rows,:]
             ytrain = y[0:train_rows]
             Xtest = Xtest[0:test_rows]
@@ -205,7 +211,7 @@ class Section2:
                 "conf_mat_test": conf_mat_test
             }
            
-            
+            # Store results for the current training size
             answer[ntrain_list[i]] = {
                 "partC": answer_sub ,
                 "partD": answer_sub1,
