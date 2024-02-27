@@ -4,16 +4,25 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
-import utils as u
-import new_utils as nu
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import ShuffleSplit, cross_validate, train_test_split
+
+from sklearn.ensemble import RandomForestClassifier
+
 from sklearn.model_selection import (
     ShuffleSplit,
     cross_validate,
     KFold,
 )
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import LogisticRegression
+
+import utils as u
+
+import new_utils as nu
+from sklearn.metrics import accuracy_score
+
 # ======================================================================
 
 # I could make Section 2 a subclass of Section 1, which would facilitate code reuse.
@@ -60,7 +69,22 @@ class Section2:
         NDArray[np.floating],
         NDArray[np.int32],
     ]:
+        
+        Xtrain, ytrain, Xtest, ytest = u.prepare_data()
+        Xtrain = nu.scale_data(Xtrain)
+        Xtest = nu.scale_data(Xtest)
         answer = {}
+        
+        answer['nb_classes_train'] = len(np.unique(ytrain))
+        answer['nb_classes_test'] = len(np.unique(ytest))
+        answer['class_count_train'] = np.bincount(ytrain)
+        answer['class_count_test'] = np.bincount(ytest)
+        answer['length_Xtrain'] = len(Xtrain)
+        answer['length_Xtest'] = len(Xtest)
+        answer['length_ytrain'] = len(ytrain)
+        answer['length_ytest'] = len(ytest)
+        answer['max_Xtrain'] = Xtrain.max()
+        answer['max_Xtest'] = Xtrain.max()
         # Enter your code and fill the `answer`` dictionary
 
         # `answer` is a dictionary with the following keys:
@@ -78,21 +102,8 @@ class Section2:
         # return values:
         # Xtrain, ytrain, Xtest, ytest: the data used to fill the `answer`` dictionary
 
-        # Initialize training and testing data with dummy values
-        Xtrain = Xtest = np.zeros([1, 1], dtype="float")
-        ytrain = ytest = np.zeros([1], dtype="int")
-
-        # Prepare actual data for training and testing
-        X, y, Xtest, ytest = u.prepare_data()
-        
-        # Scale the training and testing data and Convert data types of labels to integer
-        Xtrain = nu.scale_data(X)
-        Xtest = nu.scale_data(Xtest)
-        ytrain = y.astype(int)
-        ytest = ytest.astype(int)
-        
-        print(set(ytrain))
-        print(set(ytest))
+        #Xtrain = Xtest = np.zeros([1, 1], dtype="float")
+        #ytrain = ytest = np.zeros([1], dtype="int")
 
         return answer, Xtrain, ytrain, Xtest, ytest
 
@@ -124,25 +135,20 @@ class Section2:
         """ """
         # Enter your code and fill the `answer`` dictionary
         answer = {}
-
-        # Loop over different combinations of training and testing sizes
         for i in range(0, len(ntrain_list)):
             train_rows = ntrain_list[i]
             test_rows = ntest_list[i]
     
-            # Subset the data based on the specified sizes
             Xtrain = X[0:train_rows,:]
             ytrain = y[0:train_rows]
-            Xtest_subset = Xtest[0:test_rows]
-            ytest_subset = ytest[0:test_rows]
+            Xtest = Xtest[0:test_rows]
+            ytest = ytest[0:test_rows]
             
-            # Update X and y for further processing
             X = Xtrain
             y = ytrain
       
-            # Initialize dictionaries to store results for each part
+    
             answer1= {}
-            
             # Part 1C: Decision Tree with K-Fold Cross-Validation
             clf = DecisionTreeClassifier(random_state=self.seed)
             cv = KFold(n_splits=5,shuffle = True,random_state=self.seed)
@@ -157,9 +163,10 @@ class Section2:
         
             answer_sub["scores_C"] = res_key
             answer_sub["clf"] = clf  
-            answer_sub["cv"] = cv 
+            answer_sub["cv"] = cv  
+            
     
-            # Part 1D: Decision Tree with Shuffle-Split Cross-Validation
+            # Part 1D: Decision Tree with Shuffle-Split Cross-Validation    
             answer_sub1 ={}
             clf = DecisionTreeClassifier(random_state=self.seed)
             cv_ss = ShuffleSplit(n_splits=5,random_state=self.seed)
@@ -182,11 +189,11 @@ class Section2:
             scores = cross_validate(clf, X, y, cv=cv_ss, return_train_score=True)
             clf.fit(X, y)
             scores_train_F = clf.score(X, y)
-            scores_test_F = clf.score(Xtest_subset, ytest_subset) 
+            scores_test_F = clf.score(Xtest, ytest) 
             train_pred =clf.predict(X)
-            test_pred = clf.predict(Xtest_subset)
+            test_pred = clf.predict(Xtest)
             conf_mat_train = confusion_matrix(y,train_pred)
-            conf_mat_test = confusion_matrix(ytest_subset,test_pred)
+            conf_mat_test = confusion_matrix(ytest,test_pred)
             mean_cv_accuracy_F = scores["test_score"].mean()
             answer_sub2 = {
                 "scores_train_F": scores_train_F,
@@ -197,8 +204,8 @@ class Section2:
                 "conf_mat_train": conf_mat_train,
                 "conf_mat_test": conf_mat_test
             }
+           
             
-            # Store results for the current training size
             answer[ntrain_list[i]] = {
                 "partC": answer_sub ,
                 "partD": answer_sub1,
@@ -206,8 +213,9 @@ class Section2:
                 "ntrain": train_rows,
                 "ntest": test_rows,
                 "class_count_train": list(np.bincount(ytrain)) ,
-                "class_count_test": list(np.bincount(ytest_subset))
+                "class_count_test": list(np.bincount(ytest))
             }
+        
 
         """
         `answer` is a dictionary with the following keys:
@@ -224,5 +232,5 @@ class Section2:
             - "class_count_test": number of elements in each class in
                                the training set (a list, not a numpy array)
         """
-        
-            return answers
+
+        return answer
